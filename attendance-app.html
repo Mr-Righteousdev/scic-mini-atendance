@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CyberClub Attendance</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a26;
+    --border: #2a2a3e;
+    --accent: #00ff88;
+    --accent2: #7b61ff;
+    --danger: #ff4466;
+    --warn: #ffaa00;
+    --text: #e8e8f0;
+    --muted: #6b6b8a;
+    --font-head: 'Syne', sans-serif;
+    --font-mono: 'Space Mono', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font-head); min-height: 100vh; }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* SCREENS */
+  .screen { display: none; min-height: 100vh; }
+  .screen.active { display: block; }
+
+  /* LOGIN */
+  #loginScreen {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background: radial-gradient(ellipse at 50% 0%, #1a0a2e 0%, var(--bg) 70%);
+  }
+  #loginScreen.active { display: flex; }
+  .login-box {
+    width: 100%;
+    max-width: 400px;
+    padding: 48px 40px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    position: relative;
+  }
+  .login-box::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent2), var(--accent));
+  }
+  .login-logo {
+    font-size: 11px;
+    font-family: var(--font-mono);
+    color: var(--accent);
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .login-title {
+    font-size: 28px;
+    font-weight: 800;
+    margin-bottom: 4px;
+    line-height: 1.1;
+  }
+  .login-sub { font-size: 13px; color: var(--muted); margin-bottom: 36px; font-family: var(--font-mono); }
+  label { display: block; font-size: 11px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; font-family: var(--font-mono); }
+  input[type="password"], input[type="text"], input[type="email"], input[type="date"], textarea, select {
+    width: 100%;
+    padding: 12px 14px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  .btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-family: var(--font-head);
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 1px;
+    transition: all 0.15s;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #000;
+    width: 100%;
+    margin-top: 16px;
+    padding: 14px;
+    font-size: 15px;
+  }
+  .btn-primary:hover { background: #00cc6a; transform: translateY(-1px); }
+  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
+  .btn-danger:hover { background: var(--danger); color: #fff; }
+  .btn-sm { padding: 6px 14px; font-size: 12px; }
+  .error-msg { color: var(--danger); font-size: 12px; font-family: var(--font-mono); margin-top: 10px; display: none; }
+
+  /* LAYOUT */
+  .app-layout { display: flex; min-height: 100vh; }
+  .sidebar {
+    width: 220px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 24px 0;
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .sidebar-brand {
+    padding: 0 20px 24px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar-brand .tag {
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: var(--accent);
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+  }
+  .sidebar-brand .name { font-size: 18px; font-weight: 800; margin-top: 2px; }
+  .nav { padding: 16px 0; flex: 1; }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 20px;
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    transition: all 0.15s;
+    border-left: 2px solid transparent;
+  }
+  .nav-item:hover { color: var(--text); background: var(--surface2); }
+  .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: rgba(0,255,136,0.05); }
+  .nav-icon { width: 16px; text-align: center; font-size: 14px; }
+  .sidebar-footer { padding: 16px 20px; border-top: 1px solid var(--border); }
+  .logout-btn {
+    font-size: 12px;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: var(--font-mono);
+    transition: color 0.15s;
+  }
+  .logout-btn:hover { color: var(--danger); }
+
+  .main { margin-left: 220px; padding: 36px 40px; width: calc(100% - 220px); }
+  .page { display: none; }
+  .page.active { display: block; }
+  .page-header { margin-bottom: 32px; }
+  .page-header h1 { font-size: 26px; font-weight: 800; }
+  .page-header p { color: var(--muted); font-size: 13px; font-family: var(--font-mono); margin-top: 4px; }
+
+  /* CARDS */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 24px;
+  }
+  .card-sm { padding: 16px 20px; }
+
+  /* STATS GRID */
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .stat-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.3s;
+  }
+  .stat-card:hover::after { transform: scaleX(1); }
+  .stat-label { font-size: 10px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; font-family: var(--font-mono); margin-bottom: 8px; }
+  .stat-value { font-size: 32px; font-weight: 800; line-height: 1; }
+  .stat-value.green { color: var(--accent); }
+  .stat-value.purple { color: var(--accent2); }
+  .stat-value.red { color: var(--danger); }
+  .stat-value.yellow { color: var(--warn); }
+
+  /* TABLE */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    text-align: left;
+    padding: 10px 14px;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    border-bottom: 1px solid var(--border);
+  }
+  td { padding: 13px 14px; font-size: 14px; border-bottom: 1px solid rgba(42,42,62,0.5); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface2); }
+
+  /* BADGE */
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 2px;
+    font-size: 10px;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .badge-green { background: rgba(0,255,136,0.12); color: var(--accent); }
+  .badge-red { background: rgba(255,68,102,0.12); color: var(--danger); }
+  .badge-yellow { background: rgba(255,170,0,0.12); color: var(--warn); }
+  .badge-purple { background: rgba(123,97,255,0.12); color: var(--accent2); }
+
+  /* TOGGLE */
+  .toggle {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    background: var(--border);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+    border: none;
+    outline: none;
+  }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    top: 3px; left: 3px;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    transition: transform 0.2s;
+  }
+  .toggle.on { background: var(--accent); }
+  .toggle.on::after { transform: translateX(20px); }
+
+  /* MODAL */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(4px);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 32px;
+    width: 100%;
+    max-width: 440px;
+    position: relative;
+  }
+  .modal h2 { font-size: 18px; font-weight: 800; margin-bottom: 20px; }
+  .field { margin-bottom: 16px; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 24px; justify-content: flex-end; }
+
+  /* ATTENDANCE GRID */
+  .member-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 0;
+    border-bottom: 1px solid rgba(42,42,62,0.5);
+  }
+  .member-row:last-child { border-bottom: none; }
+  .member-info { display: flex; align-items: center; gap: 12px; }
+  .member-avatar {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; color: var(--accent);
+  }
+  .member-name { font-size: 14px; font-weight: 600; }
+  .member-meta { font-size: 11px; color: var(--muted); font-family: var(--font-mono); margin-top: 1px; }
+
+  /* REPORT GRID */
+  .report-table th, .report-table td { padding: 10px 12px; white-space: nowrap; }
+  .present-cell { background: rgba(0,255,136,0.1); color: var(--accent); text-align: center; font-family: var(--font-mono); font-size: 12px; }
+  .absent-cell { text-align: center; font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+
+  /* SEARCH */
+  .search-bar { position: relative; margin-bottom: 20px; }
+  .search-bar input { padding-left: 36px; }
+  .search-bar::before { content: '🔍'; position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 13px; z-index: 1; }
+
+  /* PROGRESS BAR */
+  .progress-bar { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; margin-top: 4px; }
+  .progress-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
+
+  /* LOADING */
+  .loading { color: var(--muted); font-family: var(--font-mono); font-size: 12px; padding: 20px 0; text-align: center; }
+
+  .flex-between { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .flex-gap { display: flex; gap: 10px; align-items: center; }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+  .text-muted { color: var(--muted); font-family: var(--font-mono); font-size: 12px; }
+  .mt-8 { margin-top: 8px; }
+  .mt-16 { margin-top: 16px; }
+  .flagged-row td { color: var(--danger) !important; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="loginScreen" class="screen active">
+  <div class="login-box">
+    <div class="login-logo">⚡ CyberClub</div>
+    <div class="login-title">Secretary Portal</div>
+    <div class="login-sub">// attendance management system</div>
+    <div class="field">
+      <label>Email</label>
+      <input type="email" id="loginEmail" placeholder="secretary@cyberclub.com" />
+    </div>
+    <div class="field" style="margin-top:14px">
+      <label>Password</label>
+      <input type="password" id="loginPass" placeholder="Enter password..." />
+    </div>
+    <button class="btn btn-primary" onclick="doLogin()">ACCESS SYSTEM</button>
+    <div class="error-msg" id="loginError">// incorrect credentials — access denied</div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="appScreen" class="screen">
+  <div class="app-layout">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="tag">⚡ CyberClub</div>
+        <div class="name">Attendance</div>
+      </div>
+      <nav class="nav">
+        <div class="nav-item active" onclick="showPage('dashboard', this)">
+          <span class="nav-icon">◼</span> Dashboard
+        </div>
+        <div class="nav-item" onclick="showPage('attendance', this)">
+          <span class="nav-icon">✓</span> Take Attendance
+        </div>
+        <div class="nav-item" onclick="showPage('members', this)">
+          <span class="nav-icon">◉</span> Members
+        </div>
+        <div class="nav-item" onclick="showPage('sessions', this)">
+          <span class="nav-icon">▦</span> Sessions
+        </div>
+        <div class="nav-item" onclick="showPage('reports', this)">
+          <span class="nav-icon">▤</span> Reports
+        </div>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="logout-btn" onclick="doLogout()">// logout</div>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main">
+
+      <!-- DASHBOARD -->
+      <div class="page active" id="page-dashboard">
+        <div class="page-header">
+          <h1>Dashboard</h1>
+          <p>// overview of club attendance</p>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Total Members</div>
+            <div class="stat-value green" id="stat-members">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Total Sessions</div>
+            <div class="stat-value purple" id="stat-sessions">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Overall Attendance</div>
+            <div class="stat-value green" id="stat-rate">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Flagged Members</div>
+            <div class="stat-value red" id="stat-flagged">—</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="flex-between">
+            <div style="font-weight:700">Flagged Members</div>
+            <span class="badge badge-red" id="flagged-count-badge">0</span>
+          </div>
+          <div id="flagged-list"><div class="loading">Loading...</div></div>
+        </div>
+      </div>
+
+      <!-- TAKE ATTENDANCE -->
+      <div class="page" id="page-attendance">
+        <div class="page-header">
+          <h1>Take Attendance</h1>
+          <p>// create or select a session, then mark present members</p>
+        </div>
+        <div class="card" style="margin-bottom:20px">
+          <div style="font-weight:700;margin-bottom:16px">Session</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <div class="field">
+              <label>Date</label>
+              <input type="date" id="att-date" />
+            </div>
+            <div class="field">
+              <label>Topic</label>
+              <input type="text" id="att-topic" placeholder="e.g. Web Exploitation Basics" />
+            </div>
+          </div>
+          <div class="flex-gap mt-16">
+            <button class="btn btn-secondary btn-sm" onclick="loadOrCreateSession()">Load / Create Session</button>
+            <span class="text-muted" id="session-status"></span>
+          </div>
+        </div>
+        <div class="card" id="attendance-list-card" style="display:none">
+          <div class="flex-between">
+            <div style="font-weight:700">Members</div>
+            <div class="flex-gap">
+              <span class="text-muted" id="present-count">0 present</span>
+              <button class="btn btn-primary btn-sm" onclick="saveAttendance()">SAVE ATTENDANCE</button>
+            </div>
+          </div>
+          <div id="attendance-member-list"><div class="loading">Loading members...</div></div>
+        </div>
+      </div>
+
+      <!-- MEMBERS -->
+      <div class="page" id="page-members">
+        <div class="page-header">
+          <h1>Members</h1>
+          <p>// manage club roster</p>
+        </div>
+        <div class="flex-between">
+          <div class="search-bar" style="flex:1;margin-right:16px;margin-bottom:0">
+            <input type="text" id="member-search" placeholder="Search members..." oninput="filterMembers()" />
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="openAddMember()">+ ADD MEMBER</button>
+        </div>
+        <div class="card mt-16" id="members-table-wrap">
+          <div class="loading">Loading...</div>
+        </div>
+      </div>
+
+      <!-- SESSIONS -->
+      <div class="page" id="page-sessions">
+        <div class="page-header">
+          <h1>Sessions</h1>
+          <p>// attendance history</p>
+        </div>
+        <div class="card" id="sessions-list">
+          <div class="loading">Loading...</div>
+        </div>
+      </div>
+
+      <!-- REPORTS -->
+      <div class="page" id="page-reports">
+        <div class="page-header">
+          <h1>Reports</h1>
+          <p>// full attendance grid</p>
+        </div>
+        <div class="flex-between">
+          <div></div>
+          <button class="btn btn-secondary btn-sm" onclick="exportCSV()">⬇ EXPORT CSV</button>
+        </div>
+        <div class="card mt-16">
+          <div class="table-wrap" id="report-grid">
+            <div class="loading">Loading...</div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- ADD MEMBER MODAL -->
+<div class="modal-overlay" id="addMemberModal">
+  <div class="modal">
+    <h2>Add Member</h2>
+    <div class="field"><label>Full Name *</label><input type="text" id="new-member-name" placeholder="Enter name..." /></div>
+    <div class="field"><label>Email (optional)</label><input type="email" id="new-member-email" placeholder="Enter email..." /></div>
+    <div class="error-msg" id="addMemberError">Name is required.</div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary btn-sm" onclick="closeModal('addMemberModal')">Cancel</button>
+      <button class="btn btn-primary btn-sm" onclick="addMember()">ADD MEMBER</button>
+    </div>
+  </div>
+</div>
+
+<!-- SESSION DETAIL MODAL -->
+<div class="modal-overlay" id="sessionDetailModal">
+  <div class="modal" style="max-width:560px">
+    <h2 id="session-detail-title">Session Detail</h2>
+    <div id="session-detail-content"><div class="loading">Loading...</div></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary btn-sm" onclick="closeModal('sessionDetailModal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://gcmsyzppuskcdtohaurn.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_e7ZUnmQa_wwvCs0GB3y9OQ_t2eyzuZo';
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// STATE
+let allMembers = [];
+let allSessions = [];
+let currentSessionId = null;
+let attendanceMap = {};
+let reportData = { members: [], sessions: [], grid: {} };
+
+// ===================== AUTH =====================
+// Check if already logged in on page load
+db.auth.getSession().then(({ data: { session } }) => {
+  if (session) showApp();
+});
+
+// Listen for auth changes
+db.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_IN') showApp();
+  if (event === 'SIGNED_OUT') showLogin();
+});
+
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  const errEl = document.getElementById('loginError');
+  errEl.style.display = 'none';
+
+  const { error } = await db.auth.signInWithPassword({ email, password: pass });
+  if (error) {
+    errEl.textContent = '// ' + error.message;
+    errEl.style.display = 'block';
+  }
+  // showApp() is triggered automatically via onAuthStateChange
+}
+
+async function doLogout() {
+  await db.auth.signOut();
+}
+
+function showApp() {
+  document.getElementById('loginScreen').classList.remove('active');
+  document.getElementById('appScreen').classList.add('active');
+  initApp();
+}
+
+function showLogin() {
+  document.getElementById('appScreen').classList.remove('active');
+  document.getElementById('loginScreen').classList.add('active');
+  document.getElementById('loginPass').value = '';
+}
+
+document.getElementById('loginPass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+// ===================== ROUTING =====================
+function showPage(name, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  if (el) el.classList.add('active');
+  loadPage(name);
+}
+
+function loadPage(name) {
+  if (name === 'dashboard') loadDashboard();
+  else if (name === 'members') loadMembers();
+  else if (name === 'sessions') loadSessions();
+  else if (name === 'reports') loadReports();
+  else if (name === 'attendance') initAttendancePage();
+}
+
+function initApp() {
+  // Set today's date on attendance page
+  document.getElementById('att-date').value = new Date().toISOString().split('T')[0];
+  loadDashboard();
+}
+
+// ===================== DASHBOARD =====================
+async function loadDashboard() {
+  const { data: members } = await db.from('members').select('*');
+  const { data: sessions } = await db.from('sessions').select('*');
+  const { data: attendance } = await db.from('attendance').select('*');
+
+  allMembers = members || [];
+  allSessions = sessions || [];
+
+  const totalMembers = allMembers.length;
+  const totalSessions = allSessions.length;
+  const flagged = allMembers.filter(m => m.flagged).length;
+
+  let rate = 0;
+  if (attendance && attendance.length > 0) {
+    const present = attendance.filter(a => a.present).length;
+    rate = Math.round((present / attendance.length) * 100);
+  }
+
+  document.getElementById('stat-members').textContent = totalMembers;
+  document.getElementById('stat-sessions').textContent = totalSessions;
+  document.getElementById('stat-rate').textContent = rate + '%';
+  document.getElementById('stat-flagged').textContent = flagged;
+
+  // Flagged list
+  // Auto-flag members below 60%
+  if (totalSessions > 0 && attendance) {
+    for (const m of allMembers) {
+      const mAtt = attendance.filter(a => a.member_id === m.id);
+      if (mAtt.length > 0) {
+        const pct = Math.round((mAtt.filter(a => a.present).length / totalSessions) * 100);
+        if (pct < 60 && !m.flagged) {
+          await db.from('members').update({ flagged: true }).eq('id', m.id);
+          m.flagged = true;
+        }
+      }
+    }
+  }
+
+  const flaggedMembers = allMembers.filter(m => m.flagged);
+  document.getElementById('flagged-count-badge').textContent = flaggedMembers.length;
+
+  if (flaggedMembers.length === 0) {
+    document.getElementById('flagged-list').innerHTML = '<div class="text-muted" style="padding:16px 0">No flagged members. All good! ✓</div>';
+    return;
+  }
+
+  let html = '';
+  for (const m of flaggedMembers) {
+    const mAtt = (attendance || []).filter(a => a.member_id === m.id);
+    const pct = totalSessions > 0 ? Math.round((mAtt.filter(a => a.present).length / totalSessions) * 100) : 0;
+    html += `<div class="member-row">
+      <div class="member-info">
+        <div class="member-avatar">${m.name[0].toUpperCase()}</div>
+        <div>
+          <div class="member-name" style="color:var(--danger)">${m.name}</div>
+          <div class="member-meta">${pct}% attendance</div>
+        </div>
+      </div>
+      <div class="flex-gap">
+        <span class="badge badge-red">FLAGGED</span>
+        <button class="btn btn-secondary btn-sm" onclick="unflagMember('${m.id}')">Unflag</button>
+      </div>
+    </div>`;
+  }
+  document.getElementById('flagged-list').innerHTML = html;
+}
+
+async function unflagMember(id) {
+  await db.from('members').update({ flagged: false }).eq('id', id);
+  loadDashboard();
+}
+
+// ===================== ATTENDANCE =====================
+function initAttendancePage() {
+  currentSessionId = null;
+  attendanceMap = {};
+  document.getElementById('attendance-list-card').style.display = 'none';
+  document.getElementById('session-status').textContent = '';
+}
+
+async function loadOrCreateSession() {
+  const date = document.getElementById('att-date').value;
+  const topic = document.getElementById('att-topic').value.trim();
+  if (!date || !topic) {
+    document.getElementById('session-status').textContent = '// fill in date and topic';
+    return;
+  }
+
+  // Check if session exists
+  const { data: existing } = await db.from('sessions').select('*').eq('date', date).eq('topic', topic).limit(1);
+
+  let session;
+  if (existing && existing.length > 0) {
+    session = existing[0];
+    document.getElementById('session-status').textContent = '// loaded existing session';
+  } else {
+    const { data: created } = await db.from('sessions').insert({ date, topic }).select().limit(1);
+    session = created[0];
+    document.getElementById('session-status').textContent = '// new session created';
+  }
+
+  currentSessionId = session.id;
+
+  // Load members + existing attendance
+  const { data: members } = await db.from('members').select('*').order('name');
+  const { data: existing_att } = await db.from('attendance').select('*').eq('session_id', session.id);
+
+  allMembers = members || [];
+  attendanceMap = {};
+  for (const m of allMembers) {
+    const rec = (existing_att || []).find(a => a.member_id === m.id);
+    attendanceMap[m.id] = rec ? rec.present : false;
+  }
+
+  renderAttendanceList();
+  document.getElementById('attendance-list-card').style.display = 'block';
+}
+
+function renderAttendanceList() {
+  let html = '';
+  const presentCount = Object.values(attendanceMap).filter(Boolean).length;
+  document.getElementById('present-count').textContent = `${presentCount} present`;
+
+  for (const m of allMembers) {
+    const isOn = attendanceMap[m.id];
+    html += `<div class="member-row">
+      <div class="member-info">
+        <div class="member-avatar">${m.name[0].toUpperCase()}</div>
+        <div>
+          <div class="member-name">${m.name}</div>
+          ${m.flagged ? '<span class="badge badge-red" style="margin-top:2px">FLAGGED</span>' : ''}
+        </div>
+      </div>
+      <button class="toggle ${isOn ? 'on' : ''}" onclick="toggleAttendance('${m.id}', this)"></button>
+    </div>`;
+  }
+  document.getElementById('attendance-member-list').innerHTML = html || '<div class="text-muted">No members found. Add members first.</div>';
+}
+
+function toggleAttendance(memberId, btn) {
+  attendanceMap[memberId] = !attendanceMap[memberId];
+  btn.classList.toggle('on', attendanceMap[memberId]);
+  const presentCount = Object.values(attendanceMap).filter(Boolean).length;
+  document.getElementById('present-count').textContent = `${presentCount} present`;
+}
+
+async function saveAttendance() {
+  if (!currentSessionId) return;
+
+  // Delete existing attendance for this session
+  await db.from('attendance').delete().eq('session_id', currentSessionId);
+
+  // Insert all
+  const rows = allMembers.map(m => ({
+    member_id: m.id,
+    session_id: currentSessionId,
+    present: attendanceMap[m.id] || false
+  }));
+
+  const { error } = await db.from('attendance').insert(rows);
+  if (error) {
+    alert('Error saving: ' + error.message);
+  } else {
+    document.getElementById('session-status').textContent = '// ✓ saved successfully';
+    // Auto-flag check after saving
+    checkAndAutoFlag();
+  }
+}
+
+async function checkAndAutoFlag() {
+  const { data: sessions } = await db.from('sessions').select('id');
+  const total = (sessions || []).length;
+  if (total === 0) return;
+
+  const { data: attendance } = await db.from('attendance').select('*');
+  for (const m of allMembers) {
+    const mAtt = (attendance || []).filter(a => a.member_id === m.id);
+    const pct = Math.round((mAtt.filter(a => a.present).length / total) * 100);
+    if (pct < 60) {
+      await db.from('members').update({ flagged: true }).eq('id', m.id);
+    }
+  }
+}
+
+// ===================== MEMBERS =====================
+async function loadMembers() {
+  const { data: members } = await db.from('members').select('*').order('name');
+  const { data: sessions } = await db.from('sessions').select('id');
+  const { data: attendance } = await db.from('attendance').select('*');
+
+  allMembers = members || [];
+  renderMembersTable(allMembers, sessions || [], attendance || []);
+}
+
+function renderMembersTable(members, sessions, attendance) {
+  const totalSessions = sessions.length;
+  let html = `<div class="table-wrap"><table>
+    <thead><tr>
+      <th>Name</th><th>Email</th><th>Joined</th><th>Attendance</th><th>Status</th><th>Actions</th>
+    </tr></thead><tbody>`;
+
+  for (const m of members) {
+    const mAtt = attendance.filter(a => a.member_id === m.id);
+    const pct = totalSessions > 0 ? Math.round((mAtt.filter(a => a.present).length / totalSessions) * 100) : 0;
+    const color = pct >= 80 ? 'var(--accent)' : pct >= 60 ? 'var(--warn)' : 'var(--danger)';
+    html += `<tr class="${m.flagged ? 'flagged-row' : ''}">
+      <td><strong>${m.name}</strong></td>
+      <td style="color:var(--muted)">${m.email || '—'}</td>
+      <td style="color:var(--muted);font-family:var(--font-mono);font-size:12px">${m.joined_date || '—'}</td>
+      <td style="min-width:120px">
+        <div style="font-family:var(--font-mono);font-size:12px;color:${color}">${pct}%</div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${color}"></div></div>
+      </td>
+      <td>${m.flagged ? '<span class="badge badge-red">FLAGGED</span>' : '<span class="badge badge-green">ACTIVE</span>'}</td>
+      <td>
+        <div class="flex-gap">
+          <button class="btn btn-secondary btn-sm" onclick="toggleFlag('${m.id}', ${m.flagged})">${m.flagged ? 'Unflag' : 'Flag'}</button>
+          <button class="btn btn-danger btn-sm" onclick="removeMember('${m.id}', '${m.name.replace(/'/g,"\\'")}')">Remove</button>
+        </div>
+      </td>
+    </tr>`;
+  }
+  html += '</tbody></table></div>';
+  document.getElementById('members-table-wrap').innerHTML = html || '<div class="text-muted">No members yet.</div>';
+}
+
+function filterMembers() {
+  const q = document.getElementById('member-search').value.toLowerCase();
+  // Just reload with filter - simplistic client-side
+  const filtered = allMembers.filter(m => m.name.toLowerCase().includes(q) || (m.email || '').toLowerCase().includes(q));
+  // Re-render (without att data for simplicity in filter)
+  let html = `<div class="table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Actions</th></tr></thead><tbody>`;
+  for (const m of filtered) {
+    html += `<tr>
+      <td><strong>${m.name}</strong></td>
+      <td style="color:var(--muted)">${m.email || '—'}</td>
+      <td>${m.flagged ? '<span class="badge badge-red">FLAGGED</span>' : '<span class="badge badge-green">ACTIVE</span>'}</td>
+      <td><div class="flex-gap">
+        <button class="btn btn-secondary btn-sm" onclick="toggleFlag('${m.id}', ${m.flagged})">${m.flagged ? 'Unflag' : 'Flag'}</button>
+        <button class="btn btn-danger btn-sm" onclick="removeMember('${m.id}', '${m.name.replace(/'/g,"\\'")}')">Remove</button>
+      </div></td>
+    </tr>`;
+  }
+  html += '</tbody></table></div>';
+  document.getElementById('members-table-wrap').innerHTML = html;
+}
+
+function openAddMember() { openModal('addMemberModal'); document.getElementById('new-member-name').value = ''; document.getElementById('new-member-email').value = ''; }
+
+async function addMember() {
+  const name = document.getElementById('new-member-name').value.trim();
+  const email = document.getElementById('new-member-email').value.trim();
+  if (!name) { document.getElementById('addMemberError').style.display = 'block'; return; }
+  document.getElementById('addMemberError').style.display = 'none';
+  await db.from('members').insert({ name, email: email || null });
+  closeModal('addMemberModal');
+  loadMembers();
+}
+
+async function toggleFlag(id, currentlyFlagged) {
+  await db.from('members').update({ flagged: !currentlyFlagged }).eq('id', id);
+  loadMembers();
+}
+
+async function removeMember(id, name) {
+  if (!confirm(`Remove ${name} from the system? This cannot be undone.`)) return;
+  await db.from('members').delete().eq('id', id);
+  loadMembers();
+}
+
+// ===================== SESSIONS =====================
+async function loadSessions() {
+  const { data: sessions } = await db.from('sessions').select('*').order('date', { ascending: false });
+  const { data: attendance } = await db.from('attendance').select('*');
+  allSessions = sessions || [];
+
+  let html = `<div class="table-wrap"><table>
+    <thead><tr><th>Date</th><th>Topic</th><th>Present</th><th>Absent</th><th></th></tr></thead><tbody>`;
+  for (const s of allSessions) {
+    const att = (attendance || []).filter(a => a.session_id === s.id);
+    const present = att.filter(a => a.present).length;
+    const absent = att.filter(a => !a.present).length;
+    html += `<tr>
+      <td style="font-family:var(--font-mono);font-size:12px">${s.date}</td>
+      <td><strong>${s.topic}</strong></td>
+      <td><span class="badge badge-green">${present}</span></td>
+      <td><span class="badge badge-red">${absent}</span></td>
+      <td><button class="btn btn-secondary btn-sm" onclick="viewSession('${s.id}')">View</button></td>
+    </tr>`;
+  }
+  html += '</tbody></table></div>';
+  if (allSessions.length === 0) html = '<div class="text-muted">No sessions yet.</div>';
+  document.getElementById('sessions-list').innerHTML = html;
+}
+
+async function viewSession(sessionId) {
+  const session = allSessions.find(s => s.id === sessionId);
+  document.getElementById('session-detail-title').textContent = session ? `${session.date} — ${session.topic}` : 'Session Detail';
+  openModal('sessionDetailModal');
+
+  const { data: att } = await db.from('attendance').select('*, members(name)').eq('session_id', sessionId);
+  if (!att || att.length === 0) {
+    document.getElementById('session-detail-content').innerHTML = '<div class="text-muted">No attendance data for this session.</div>';
+    return;
+  }
+
+  const present = att.filter(a => a.present);
+  const absent = att.filter(a => !a.present);
+
+  let html = `<div style="margin-bottom:12px"><strong>Present (${present.length})</strong></div>`;
+  for (const a of present) {
+    html += `<div class="member-row" style="padding:8px 0"><div class="member-info">
+      <div class="member-avatar" style="width:28px;height:28px;font-size:11px">${a.members.name[0]}</div>
+      <span>${a.members.name}</span></div>
+      <span class="badge badge-green">PRESENT</span></div>`;
+  }
+  if (absent.length > 0) {
+    html += `<hr class="divider"><div style="margin-bottom:12px"><strong>Absent (${absent.length})</strong></div>`;
+    for (const a of absent) {
+      html += `<div class="member-row" style="padding:8px 0"><div class="member-info">
+        <div class="member-avatar" style="width:28px;height:28px;font-size:11px;color:var(--muted)">${a.members.name[0]}</div>
+        <span style="color:var(--muted)">${a.members.name}</span></div>
+        <span class="badge badge-red">ABSENT</span></div>`;
+    }
+  }
+  document.getElementById('session-detail-content').innerHTML = html;
+}
+
+// ===================== REPORTS =====================
+async function loadReports() {
+  const { data: members } = await db.from('members').select('*').order('name');
+  const { data: sessions } = await db.from('sessions').select('*').order('date');
+  const { data: attendance } = await db.from('attendance').select('*');
+
+  if (!members || !sessions || sessions.length === 0) {
+    document.getElementById('report-grid').innerHTML = '<div class="text-muted">No sessions yet to report on.</div>';
+    return;
+  }
+
+  reportData = { members, sessions, attendance: attendance || [] };
+
+  let html = `<table class="report-table">
+    <thead><tr>
+      <th>Member</th>
+      ${sessions.map(s => `<th style="max-width:80px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${s.topic}">${s.date}</th>`).join('')}
+      <th>Rate</th>
+    </tr></thead><tbody>`;
+
+  for (const m of members) {
+    const mAtt = (attendance || []).filter(a => a.member_id === m.id);
+    const presentCount = mAtt.filter(a => a.present).length;
+    const pct = sessions.length > 0 ? Math.round((presentCount / sessions.length) * 100) : 0;
+    const color = pct >= 80 ? 'var(--accent)' : pct >= 60 ? 'var(--warn)' : 'var(--danger)';
+
+    html += `<tr>
+      <td style="font-weight:600;white-space:nowrap">${m.name}</td>
+      ${sessions.map(s => {
+        const rec = mAtt.find(a => a.session_id === s.id);
+        return rec && rec.present
+          ? `<td class="present-cell">✓</td>`
+          : `<td class="absent-cell">—</td>`;
+      }).join('')}
+      <td style="font-family:var(--font-mono);font-size:12px;color:${color};font-weight:700">${pct}%</td>
+    </tr>`;
+  }
+  html += '</tbody></table>';
+  document.getElementById('report-grid').innerHTML = html;
+}
+
+function exportCSV() {
+  const { members, sessions, attendance } = reportData;
+  if (!members || !sessions) return;
+
+  let csv = 'Member,' + sessions.map(s => `${s.date} - ${s.topic}`).join(',') + ',Rate\n';
+  for (const m of members) {
+    const mAtt = attendance.filter(a => a.member_id === m.id);
+    const presentCount = mAtt.filter(a => a.present).length;
+    const pct = sessions.length > 0 ? Math.round((presentCount / sessions.length) * 100) : 0;
+    const row = [m.name, ...sessions.map(s => {
+      const rec = mAtt.find(a => a.session_id === s.id);
+      return rec && rec.present ? 'Present' : 'Absent';
+    }), pct + '%'].join(',');
+    csv += row + '\n';
+  }
+
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `cyberclub-attendance-${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+}
+
+// ===================== MODAL UTILS =====================
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// Close modal on overlay click
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+});
+</script>
+</body>
+</html>
